@@ -1,36 +1,125 @@
+# Name for UInput instance
 xinput_name: 10moons-pen
+
+# Use lsusb command to get these values
 vendor_id: 0x08f2
 product_id: 0x6811
+
+# Set to true or pass -d argument to enable debug mode (will print raw data into stdout)
+debug: false
+
+# X/Y and pressure settings
 pen:
-    max_x: 4096     #moving the tablet pen as far right as possible (use "swap_direction_x:true" to invert if needed)
-    max_y: 4096     #moving the tablet pen as far down as possible (use "swap_direction_y:true" to invert if needed)
+    # Any movements and pen touches will be ignored outside this region. Use debug mode to find out proper limits
+    # Also, use "invert_x:true" / "invert_y:true" to invert if needed
+    min_x: 0
+    max_x: 4095
+    min_y: 0
+    max_y: 4095
+
+    # Set to true to interpret X as Y and Y as X
+    swap_axes: false
+
+    # Invert directions. Use debug mode to see how this works
+    # NOTE: axes will be inverted AFTER min-max check by subtracting value from max
+    invert_x: false
+    invert_y: false
+
+    # These parameters will be just reported. Nothing is calculated from them
     resolution_x: 1
     resolution_y: 1
-    max_pressure: 2048   # manual says 8192 but cheap chinese chip reports outputs much less values
-    pressure_min: 300  # when pressing the tablet pen as hard as functionally possible (yours may vary)
-    pressure_contact_threshold: 600    # when making contact with the tablet surface (yours may vary)
+
+    # Use debug mode to determine these values
+    # NOTE: these values are usually inverted as in example below (higher value -> lower pressure)
+    # pressure_in_min - pressure without touching tablet surface (hovering pressure)
+    # pressure_in_max - maximum possible pressure you can get
+    pressure_in_min: 1740
+    pressure_in_max: 890
+
+    # Values above will be converted to this range below using formula:
+    # out = (in - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    # So, you can specify any values here if you want so
+    pressure_out_min: 0
+    pressure_out_max: 2047
+
+    # If converted (output) pressure is higher that the value below it's considered as touch
+    pressure_threshold_press: 300
+
+    # If converted (output) pressure is lower that the value below it's considered as touch release
+    pressure_threshold_release: 200
+
+    # Same as for resolution_x and resolution_y. Will be just reported. But you can calculate this if you want so
+    resolution_pressure: 1
+
+# Stylus and tablet buttons actions
 actions:
-    pen_touch: BTN_LEFT #BTN_TOUCH
-    pen: BTN_TOOL_PEN
+    pen_touch:
+        # Action when stylus touches tablet (will be written with 1)
+        # You can try using: BTN_TOOL_PEN, BTN_TOUCH, BTN_LEFT
+        down: BTN_TOOL_PEN+BTN_MOUSE
+
+        # Action when stylus doesn't touch tablet (will be written with 0)
+        up: BTN_MOUSE
+
+    # Buttons on stylus in <button code> - <action name> format
     pen_buttons:
-    #for Buttons :: python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'BTN_' in x])"
-        - BTN_STYLUS                    #1st button closest to tip
-        - BTN_STYLUS2                   #2nd button
-    tablet_buttons: 
-    #for Keys :: python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'KEY_' in x])"
-        - KEY_E                         #labelled 'E'
-        - KEY_B                         #labelled 'B'
-        - KEY_LEFTCTRL+KEY_KPPLUS       #labelled 'CTRL -'
-        - KEY_LEFTCTRL+KEY_KPMINUS      #labelled 'CTRL +'
-        - KEY_LEFTBRACE                 #labelled '['
-        - KEY_RIGHTBRACE                #labelled ']'
-        - KEY_SCROLLUP                  #labelled 'Mouse Icon arrow UP'
-        - KEY_TAB                       #labelled 'TAB'
-        - KEY_SCROLLDOWN                #labelled 'Mouse Icon arrow DOWN'
-        - KEY_SPACE                     #labelled 'SPACE'
-        - KEY_LEFTCTRL                  #labelled 'CTRL'
-        - KEY_LEFTALT                   #labelled 'ALT'
-settings:
-    swap_axis: false
-    swap_direction_x: false
-    swap_direction_y: false
+        # See "Pen button: ..." in debug mode to view codes of pressed buttons
+        # To get available action, type command below in terminal
+        # python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'BTN_' in x])"
+
+        # 1st button (closest to the tip)
+        4: BTN_STYLUS
+
+        # 2nd button
+        6: BTN_STYLUS2
+
+    # Buttons on tablet itself in <key code> - <action name> format
+    tablet_buttons:
+        # See "Tablet key: ..." in debug mode to view codes of pressed keys
+        # To get available actions, type command below in terminal
+        # python -c "from evdev import ecodes; print([x for x in dir(ecodes) if 'KEY_' in x])"
+
+        # Labelled as 'E'
+        65329: KEY_E
+
+        # Labelled as 'B'
+        65315: KEY_B
+
+        # Labelled as 'CTRL -'
+        32563: KEY_LEFTCTRL+KEY_KPMINUS
+
+        # Labelled as 'CTRL +'
+        65330: KEY_LEFTCTRL+KEY_KPPLUS
+
+        # Labelled as '['
+        48947: KEY_LEFTBRACE
+
+        # Labelled as ']'
+        65299: KEY_RIGHTBRACE
+
+        # Labelled as 'Mouse Icon arrow UP'
+        57139: KEY_SCROLLUP
+
+        # Labelled as 'TAB'
+        65075: KEY_TAB
+
+        # Labelled as 'Mouse Icon arrow DOWN'
+        61235: KEY_SCROLLDOWN
+
+        # Labelled as 'SPACE'
+        64819: KEY_SPACE
+
+        # Labelled as 'CTRL'
+        63283: KEY_LEFTCTRL
+
+        # Labelled as 'ALT'
+        64307: KEY_LEFTALT
+
+# These values are from 10moons-tools: <https://github.com/DIGImend/10moons-tools>
+# Will be sent sequentially as SET_REPORT (bmRequestType=0x21, bRequest=9)
+# See _prepare_device() function for more info
+reports:
+    - 0x0308: [0x08, 0x04, 0x1D, 0x01, 0xFF, 0xFF, 0x06, 0x2E]
+    - 0x0308: [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0]
+    - 0x0308: [0x08, 0x06, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
+    - 0x0308: [0x08, 0x03, 0x00, 0xFF, 0xF0, 0x00, 0xFF, 0xF0]
